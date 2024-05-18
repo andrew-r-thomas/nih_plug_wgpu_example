@@ -1,11 +1,17 @@
-use baseview::{MouseEvent, Size, Window, WindowHandler, WindowOpenOptions};
+use baseview::MouseEvent;
+use baseview::Size;
+use baseview::Window;
+use baseview::WindowHandle;
+use baseview::WindowHandler;
+use baseview::WindowOpenOptions;
+use nih_plug::editor::ParentWindowHandle;
 use wgpu::{
     util::DeviceExt, BindGroup, Buffer, Device, Queue, RenderPipeline, Surface, SurfaceCapabilities,
 };
 
 const WINDOW_SIZE: u32 = 512;
 
-struct WgpuRenderer {
+pub struct WgpuRenderer {
     pipeline: RenderPipeline,
     device: Device,
     surface: Surface,
@@ -20,7 +26,7 @@ struct WgpuRenderer {
 impl<'a> WgpuRenderer {
     pub async fn new(window: &mut Window<'a>) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-        let surface = unsafe { instance.create_surface(window) }.unwrap();
+        let surface = unsafe { instance.create_surface(&window) }.unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -148,6 +154,19 @@ impl<'a> WgpuRenderer {
             mouse_pos_buffer,
             size: (WINDOW_SIZE, WINDOW_SIZE),
         }
+    }
+
+    pub fn start(parent: ParentWindowHandle) -> WindowHandle {
+        let window_open_options = WindowOpenOptions {
+            title: "wgpu on baseview".into(),
+            size: Size::new(WINDOW_SIZE as f64, WINDOW_SIZE as f64),
+            scale: baseview::WindowScalePolicy::SystemScaleFactor,
+            gl_config: None,
+        };
+
+        Window::open_parented(&parent, window_open_options, |window| {
+            pollster::block_on(WgpuRenderer::new(window))
+        })
     }
 }
 

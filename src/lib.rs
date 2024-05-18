@@ -1,5 +1,7 @@
+pub mod editor;
 pub mod render;
 
+use editor::WgpuEditor;
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
@@ -110,6 +112,10 @@ impl Plugin for NihPlugWgpuExample {
         // The `reset()` function is always called right after this function. You can remove this
         // function if you do not need it.
         true
+    }
+
+    fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        Some(Box::new(WgpuEditor {}))
     }
 
     fn reset(&mut self) {
