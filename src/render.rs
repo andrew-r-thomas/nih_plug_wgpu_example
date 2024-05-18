@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use baseview::MouseEvent;
 use baseview::Size;
 use baseview::Window;
@@ -26,7 +28,7 @@ pub struct WgpuRenderer {
 impl<'a> WgpuRenderer {
     pub async fn new(window: &mut Window<'a>) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        let surface = unsafe { instance.create_surface(&*window) }.unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -161,15 +163,18 @@ impl<'a> WgpuRenderer {
             title: "wgpu on baseview".into(),
             size: Size::new(WINDOW_SIZE as f64, WINDOW_SIZE as f64),
             scale: baseview::WindowScalePolicy::SystemScaleFactor,
-            gl_config: None,
+            // gl_config: None,
         };
 
-        Window::open_parented(&parent, window_open_options, |window| {
-            pollster::block_on(WgpuRenderer::new(window))
-        })
+        Window::open_parented(
+            &parent,
+            window_open_options,
+            move |window: &mut Window<'_>| -> WgpuRenderer {
+                pollster::block_on(WgpuRenderer::new(window))
+            },
+        )
     }
 }
-
 impl WindowHandler for WgpuRenderer {
     fn on_frame(&mut self, _window: &mut baseview::Window) {
         let output = self.surface.get_current_texture().unwrap();

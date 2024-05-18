@@ -12,4 +12,24 @@ impl Editor for WgpuEditor {
         let renderer = WgpuRenderer::start(parent);
         Box::new(renderer)
     }
+
+    fn size(&self) -> (u32, u32) {
+        todo!()
+    }
+
+    fn set_scale_factor(&self, factor: f32) -> bool {
+        todo!()
+    }
+
+    fn param_value_changed(&self, id: &str, normalized_value: f32) {
+        todo!()
+    }
+
+    fn param_modulation_changed(&self, id: &str, modulation_offset: f32) {
+        todo!()
+    }
+
+    fn param_values_changed(&self) {
+        todo!()
+    }
 }
