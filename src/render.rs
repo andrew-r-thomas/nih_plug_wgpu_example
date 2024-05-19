@@ -158,7 +158,7 @@ impl<'a> WgpuRenderer {
         }
     }
 
-    pub fn start(parent: ParentWindowHandle) -> WindowHandle {
+    pub fn start(parent: ParentWindowHandle) -> HandleWrapper {
         let window_open_options = WindowOpenOptions {
             title: "wgpu on baseview".into(),
             size: Size::new(WINDOW_SIZE as f64, WINDOW_SIZE as f64),
@@ -166,15 +166,24 @@ impl<'a> WgpuRenderer {
             // gl_config: None,
         };
 
-        Window::open_parented(
+        let handle = Window::open_parented(
             &parent,
             window_open_options,
             move |window: &mut Window<'_>| -> WgpuRenderer {
                 pollster::block_on(WgpuRenderer::new(window))
             },
-        )
+        );
+
+        HandleWrapper { handle }
     }
 }
+
+unsafe impl Send for HandleWrapper {}
+
+pub struct HandleWrapper {
+    handle: WindowHandle,
+}
+
 impl WindowHandler for WgpuRenderer {
     fn on_frame(&mut self, _window: &mut baseview::Window) {
         let output = self.surface.get_current_texture().unwrap();

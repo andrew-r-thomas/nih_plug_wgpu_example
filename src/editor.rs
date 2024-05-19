@@ -14,11 +14,11 @@ impl Editor for WgpuEditor {
     }
 
     fn size(&self) -> (u32, u32) {
-        todo!()
+        (512, 512)
     }
 
     fn set_scale_factor(&self, factor: f32) -> bool {
-        todo!()
+        true
     }
 
     fn param_value_changed(&self, id: &str, normalized_value: f32) {
