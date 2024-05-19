@@ -9,9 +9,12 @@ use baseview::WindowOpenOptions;
 use nih_plug::context::gui::GuiContext;
 use nih_plug::editor::ParentWindowHandle;
 use nih_plug::params::internals::ParamPtr;
+use nih_plug::params::Param;
 use wgpu::{
     util::DeviceExt, BindGroup, Buffer, Device, Queue, RenderPipeline, Surface, SurfaceCapabilities,
 };
+
+use crate::NihPlugWgpuExampleParams;
 
 const WINDOW_SIZE: u32 = 512;
 
@@ -25,15 +28,16 @@ pub struct WgpuRenderer {
     surface_caps: SurfaceCapabilities,
     bind_group: BindGroup,
     size: (u32, u32),
-    // context: Arc<dyn GuiContext>, // param: &'a FloatParam,
-    // param: ParamPtr,
+    context: Arc<dyn GuiContext>,
+    params: Arc<NihPlugWgpuExampleParams>,
+    count: usize,
 }
 
 impl WgpuRenderer {
     pub async fn new(
         window: &mut Window<'_>,
-        // context: Arc<dyn GuiContext>,
-        // param: ParamPtr,
+        context: Arc<dyn GuiContext>,
+        params: Arc<NihPlugWgpuExampleParams>,
     ) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
         let surface = unsafe { instance.create_surface(&*window) }.unwrap();
@@ -163,15 +167,16 @@ impl WgpuRenderer {
             bind_group,
             mouse_pos_buffer,
             size: (WINDOW_SIZE, WINDOW_SIZE),
-            // context,
-            // param,
+            context,
+            params,
+            count: 0,
         }
     }
 
     pub fn start(
         parent: ParentWindowHandle,
-        // context: Arc<dyn GuiContext>,
-        // param: ParamPtr,
+        context: Arc<dyn GuiContext>,
+        params: Arc<NihPlugWgpuExampleParams>,
     ) -> WgpuWindowHandle {
         let window_open_options = WindowOpenOptions {
             title: "wgpu on baseview".into(),
@@ -181,7 +186,7 @@ impl WgpuRenderer {
 
         let bv_handle =
             Window::open_parented(&parent, window_open_options, move |window: &mut Window| {
-                pollster::block_on(WgpuRenderer::new(window))
+                pollster::block_on(WgpuRenderer::new(window, context, params))
             });
 
         WgpuWindowHandle { bv_handle }
@@ -246,23 +251,25 @@ impl WindowHandler for WgpuRenderer {
                 position,
                 modifiers: _,
             }) => {
-                // unsafe {
-                //     self.context.raw_begin_set_parameter(self.param);
-                // }
+                self.count += 1;
+                let ptr = self.params.gain.as_ptr();
+                unsafe {
+                    self.context.raw_begin_set_parameter(ptr);
+                }
 
                 let center_x: f32 =
                     (position.x as f32 - (self.size.0 as f32 / 2.0)) / (self.size.0 as f32 / 2.0);
                 let center_y: f32 =
                     ((self.size.1 as f32 / 2.0) - position.y as f32) / (self.size.1 as f32 / 2.0);
-                // let dist = f32::sqrt(
-                //     f32::powi(position.x as f32 - center_x, 2)
-                //         + f32::powi(position.y as f32 - center_y, 2),
-                // );
+                let dist = f32::sqrt(
+                    f32::powi(position.x as f32 - center_x, 2)
+                        + f32::powi(position.y as f32 - center_y, 2),
+                );
 
-                // unsafe {
-                //     self.context
-                //         .raw_set_parameter_normalized(self.param, 1.0 / dist);
-                // }
+                unsafe {
+                    self.context
+                        .raw_set_parameter_normalized(ptr, (self.count / 1000) as f32);
+                }
 
                 self.queue.write_buffer(
                     &self.mouse_pos_buffer,
@@ -270,9 +277,9 @@ impl WindowHandler for WgpuRenderer {
                     bytemuck::cast_slice(&[center_x, center_y]),
                 );
 
-                // unsafe {
-                //     self.context.raw_end_set_parameter(self.param);
-                // }
+                unsafe {
+                    self.context.raw_end_set_parameter(ptr);
+                }
             }
             baseview::Event::Window(baseview::WindowEvent::Resized(size)) => {
                 let width = size.physical_size().width;

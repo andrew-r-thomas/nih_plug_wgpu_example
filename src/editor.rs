@@ -1,8 +1,10 @@
-use crate::render::WgpuRenderer;
+use std::sync::Arc;
+
+use crate::{render::WgpuRenderer, NihPlugWgpuExampleParams};
 use nih_plug::{editor::Editor, params::internals::ParamPtr};
 
 pub struct WgpuEditor {
-    // pub param: ParamPtr,
+    pub params: Arc<NihPlugWgpuExampleParams>,
 }
 
 impl WgpuEditor {}
@@ -11,9 +13,9 @@ impl Editor for WgpuEditor {
     fn spawn(
         &self,
         parent: nih_plug::prelude::ParentWindowHandle,
-        _context: std::sync::Arc<dyn nih_plug::prelude::GuiContext>,
+        context: std::sync::Arc<dyn nih_plug::prelude::GuiContext>,
     ) -> Box<dyn std::any::Any + Send> {
-        let renderer = WgpuRenderer::start(parent);
+        let renderer = WgpuRenderer::start(parent, context.clone(), self.params.clone());
         Box::new(renderer)
     }
 
