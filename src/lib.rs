@@ -116,7 +116,7 @@ impl Plugin for NihPlugWgpuExample {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         Some(Box::new(WgpuEditor {
-            param: self.params.gain.as_ptr(),
+            // param: self.params.gain.as_ptr(),
         }))
     }
 
