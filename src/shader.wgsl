@@ -15,8 +15,11 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.color = model.color;
+    let dist = sqrt((mouse_pos.x * mouse_pos.x) + (mouse_pos.y * mouse_pos.y));
+
+    out.color = model.color / dist;
     out.clip_position = vec4<f32>(model.position.x + mouse_pos.x, model.position.y + mouse_pos.y, model.position.z, 1.0);
+
     return out;
 }
 

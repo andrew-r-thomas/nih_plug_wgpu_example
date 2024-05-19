@@ -14,7 +14,7 @@ struct NihPlugWgpuExample {
 }
 
 #[derive(Params)]
-struct NihPlugWgpuExampleParams {
+pub struct NihPlugWgpuExampleParams {
     /// The parameter's ID is used to identify the parameter in the wrappred plugin API. As long as
     /// these IDs remain constant, you can rename and reorder these fields as you wish. The
     /// parameters are exposed to the host in the same order they were defined. In this case, this
@@ -114,8 +114,10 @@ impl Plugin for NihPlugWgpuExample {
         true
     }
 
-    fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        Some(Box::new(WgpuEditor {}))
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        Some(Box::new(WgpuEditor {
+            param: self.params.gain.as_ptr(),
+        }))
     }
 
     fn reset(&mut self) {

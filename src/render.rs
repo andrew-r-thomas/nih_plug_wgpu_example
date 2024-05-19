@@ -6,7 +6,9 @@ use baseview::Window;
 use baseview::WindowHandle;
 use baseview::WindowHandler;
 use baseview::WindowOpenOptions;
+use nih_plug::context::gui::GuiContext;
 use nih_plug::editor::ParentWindowHandle;
+use nih_plug::params::internals::ParamPtr;
 use wgpu::{
     util::DeviceExt, BindGroup, Buffer, Device, Queue, RenderPipeline, Surface, SurfaceCapabilities,
 };
@@ -23,10 +25,16 @@ pub struct WgpuRenderer {
     surface_caps: SurfaceCapabilities,
     bind_group: BindGroup,
     size: (u32, u32),
+    context: Arc<dyn GuiContext>, // param: &'a FloatParam,
+    param: ParamPtr,
 }
 
-impl<'a> WgpuRenderer {
-    pub async fn new(window: &mut Window<'a>) -> Self {
+impl WgpuRenderer {
+    pub async fn new(
+        window: &mut Window<'_>,
+        context: Arc<dyn GuiContext>,
+        param: ParamPtr,
+    ) -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
         let surface = unsafe { instance.create_surface(&*window) }.unwrap();
         let adapter = instance
@@ -155,34 +163,35 @@ impl<'a> WgpuRenderer {
             bind_group,
             mouse_pos_buffer,
             size: (WINDOW_SIZE, WINDOW_SIZE),
+            context,
+            param,
         }
     }
 
-    pub fn start(parent: ParentWindowHandle) -> HandleWrapper {
+    pub fn start(
+        parent: ParentWindowHandle,
+        context: Arc<dyn GuiContext>,
+        param: ParamPtr,
+    ) -> WgpuWindowHandle {
         let window_open_options = WindowOpenOptions {
             title: "wgpu on baseview".into(),
             size: Size::new(WINDOW_SIZE as f64, WINDOW_SIZE as f64),
             scale: baseview::WindowScalePolicy::SystemScaleFactor,
-            // gl_config: None,
         };
 
-        let handle = Window::open_parented(
-            &parent,
-            window_open_options,
-            move |window: &mut Window<'_>| -> WgpuRenderer {
-                pollster::block_on(WgpuRenderer::new(window))
-            },
-        );
+        let bv_handle =
+            Window::open_parented(&parent, window_open_options, move |window: &mut Window| {
+                pollster::block_on(WgpuRenderer::new(window, context, param))
+            });
 
-        HandleWrapper { handle }
+        WgpuWindowHandle { bv_handle }
     }
 }
 
-unsafe impl Send for HandleWrapper {}
-
-pub struct HandleWrapper {
-    handle: WindowHandle,
+pub struct WgpuWindowHandle {
+    bv_handle: WindowHandle,
 }
+unsafe impl Send for WgpuWindowHandle {}
 
 impl WindowHandler for WgpuRenderer {
     fn on_frame(&mut self, _window: &mut baseview::Window) {
@@ -237,16 +246,33 @@ impl WindowHandler for WgpuRenderer {
                 position,
                 modifiers: _,
             }) => {
+                unsafe {
+                    self.context.raw_begin_set_parameter(self.param);
+                }
+
                 let center_x: f32 =
                     (position.x as f32 - (self.size.0 as f32 / 2.0)) / (self.size.0 as f32 / 2.0);
                 let center_y: f32 =
                     ((self.size.1 as f32 / 2.0) - position.y as f32) / (self.size.1 as f32 / 2.0);
+                let dist = f32::sqrt(
+                    f32::powi(position.x as f32 - center_x, 2)
+                        + f32::powi(position.y as f32 - center_y, 2),
+                );
+
+                unsafe {
+                    self.context
+                        .raw_set_parameter_normalized(self.param, 1.0 / dist);
+                }
 
                 self.queue.write_buffer(
                     &self.mouse_pos_buffer,
                     0,
                     bytemuck::cast_slice(&[center_x, center_y]),
-                )
+                );
+
+                unsafe {
+                    self.context.raw_end_set_parameter(self.param);
+                }
             }
             baseview::Event::Window(baseview::WindowEvent::Resized(size)) => {
                 let width = size.physical_size().width;
