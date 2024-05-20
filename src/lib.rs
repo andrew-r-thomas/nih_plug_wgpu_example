@@ -133,7 +133,6 @@ impl Plugin for NihPlugWgpuExample {
     ) -> ProcessStatus {
         for channel_samples in buffer.iter_samples() {
             let gain = self.params.gain.value();
-            nih_log!("gain: {}", gain);
 
             for sample in channel_samples {
                 *sample *= gain;
