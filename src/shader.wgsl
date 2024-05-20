@@ -10,7 +10,6 @@ struct VertexOutput {
 };
 
 const blue = vec3<f32>(0.0, 0.0, 1.0);
-const red = vec3<f32>(1.0, 0.0, 0.0);
 
 @vertex
 fn vs_main(
@@ -19,7 +18,7 @@ fn vs_main(
     var out: VertexOutput;
     let dist = sqrt((mouse_pos.x * mouse_pos.x) + (mouse_pos.y * mouse_pos.y));
 
-    out.color = (red * dist) + (blue * (1.0 - dist));
+    out.color = blue * (1.0 - dist);
     out.clip_position = vec4<f32>(model.position.x + mouse_pos.x, model.position.y + mouse_pos.y, model.position.z, 1.0);
 
     return out;

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use baseview::MouseButton;
 use baseview::MouseEvent;
 use baseview::Size;
 use baseview::Window;
@@ -30,7 +29,6 @@ pub struct WgpuRenderer {
     size: (u32, u32),
     context: Arc<dyn GuiContext>,
     params: Arc<NihPlugWgpuExampleParams>,
-    high: bool,
 }
 
 impl WgpuRenderer {
@@ -169,7 +167,6 @@ impl WgpuRenderer {
             size: (WINDOW_SIZE, WINDOW_SIZE),
             context,
             params,
-            high: true,
         }
     }
 
@@ -251,16 +248,30 @@ impl WindowHandler for WgpuRenderer {
                 position,
                 modifiers: _,
             }) => {
+                let ptr = self.params.gain.as_ptr();
+                unsafe {
+                    self.context.raw_begin_set_parameter(ptr);
+                }
                 let center_x: f32 =
                     (position.x as f32 - (self.size.0 as f32 / 2.0)) / (self.size.0 as f32 / 2.0);
                 let center_y: f32 =
                     ((self.size.1 as f32 / 2.0) - position.y as f32) / (self.size.1 as f32 / 2.0);
+
+                let dist = f32::sqrt((center_x * center_x) + (center_y * center_y));
+
+                let gain = self.params.gain.preview_normalized(1.0 - dist);
+                unsafe {
+                    self.context.raw_set_parameter_normalized(ptr, gain);
+                }
 
                 self.queue.write_buffer(
                     &self.mouse_pos_buffer,
                     0,
                     bytemuck::cast_slice(&[center_x, center_y]),
                 );
+                unsafe {
+                    self.context.raw_end_set_parameter(ptr);
+                }
             }
             baseview::Event::Window(baseview::WindowEvent::Resized(size)) => {
                 let width = size.physical_size().width;
@@ -286,32 +297,6 @@ impl WindowHandler for WgpuRenderer {
                         view_formats: vec![],
                     },
                 );
-            }
-            baseview::Event::Mouse(MouseEvent::ButtonPressed {
-                button,
-                modifiers: _,
-            }) => {
-                if button == MouseButton::Left {
-                    let ptr = self.params.gain.as_ptr();
-                    let gain = {
-                        if self.high {
-                            self.params.gain.preview_normalized(1.25)
-                        } else {
-                            self.params.gain.preview_normalized(0.75)
-                        }
-                    };
-                    unsafe {
-                        self.context.raw_begin_set_parameter(ptr);
-                    }
-                    unsafe {
-                        self.context.raw_set_parameter_normalized(ptr, gain);
-                    }
-                    unsafe {
-                        self.context.raw_end_set_parameter(ptr);
-                    }
-
-                    self.high = !self.high;
-                }
             }
             _ => {}
         }
