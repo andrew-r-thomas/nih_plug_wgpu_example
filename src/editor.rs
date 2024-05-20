@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{render::WgpuRenderer, NihPlugWgpuExampleParams};
-use nih_plug::{editor::Editor, params::internals::ParamPtr};
+use nih_plug::editor::Editor;
 
 pub struct WgpuEditor {
     pub params: Arc<NihPlugWgpuExampleParams>,

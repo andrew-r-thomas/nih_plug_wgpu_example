@@ -132,8 +132,8 @@ impl Plugin for NihPlugWgpuExample {
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for channel_samples in buffer.iter_samples() {
-            // Smoothing is optionally built into the parameters themselves
-            let gain = self.params.gain.smoothed.next();
+            let gain = self.params.gain.value();
+            nih_log!("gain: {}", gain);
 
             for sample in channel_samples {
                 *sample *= gain;
